@@ -18,24 +18,32 @@ interface Wallet {
 }
 
 const WalletGenerator = () => {
-    const [mnemonic, setMnemonicWords] = useState<string[]>(Array(12).fill(" "));
+    const [mnemonic, setMnemonicWords] = useState<string[]>([]);
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [isGenerated, setIsGenerated] = useState(false);
+    const [blockchainType, setBlockchainType] = useState<string | null>(null);
+    const [accountIndex, setAccountIndex] = useState(0);
+
+    // Generate Mnemonic once and store it
+    const handleBlockchainSelect = (type: string) => {
+        if(!mnemonic.length){
+            const generatedMnemonic = bip39.generateMnemonic().split(' ');
+            setMnemonicWords(generatedMnemonic);
+            toast.success("Mnemonic generated successfully");
+        }
+        setBlockchainType(type);
+    }
 
     const handleWalletGenerate = () => {
-        let localMnemonic = localStorage.getItem("mnemonicWords");
-
-        if(localMnemonic){
-            setMnemonicWords(JSON.parse(localMnemonic));
-            toast.success("Mnemonic generated successfully");
-            setIsGenerated(true);
+        if(!blockchainType || !mnemonic.length){
+            toast.error("Please select a blockchain type and generate a mnemonic.");
             return;
         }
 
-        let generatedMnemonic = bip39.generateMnemonic().split(' ');
-        setMnemonicWords(generatedMnemonic);
-        toast.success("Mnemonic generated successfully");
-        localStorage.setItem("mnemonicWords", JSON.stringify(generatedMnemonic));
+        const mnemonicString = mnemonic.join(' ');
+        generateWalletFromMnemonic(mnemonicString, blockchainType, accountIndex);
+
+        setAccountIndex(accountIndex + 1);
         setIsGenerated(true);
     }
 
@@ -82,42 +90,94 @@ const WalletGenerator = () => {
             toast.error("Error in generating Wallet.");
             return;
         }
+
+        const wallet : Wallet = {
+            publicKey: publicKeyEncoded,
+            privateKey: privateKeyEncoded,
+            mnemonic
+        };
+
+        setWallets((preWallets) => [...preWallets, wallet]);
     }
 
     return (
         <div className="p-4">
-            <Toaster/>
-            <button 
-                onClick={handleWalletGenerate} 
-                type="button" 
-                className="border px-4 py-2 bg-blue-500 text-white rounded"
-            >
-                Generate
-            </button>
-            {mnemonic.length > 0 && mnemonic[0].trim() && isGenerated && (
-                <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mt-4"
-                >
-                <div className="mt-4">
-                    <h3 className="text-lg font-bold">Your Mnemonic:</h3>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {mnemonic.map((word, index) => (
-                            <span key={index} className="bg-gray-200 px-2 py-1 rounded text-black">
-                                {word}
-                            </span>
-                        ))}
-                    </div>
+            <Toaster />
+            {!blockchainType ? (
+                <div>
                     <button
-                        onClick={handleCopyToClipboard}
+                        onClick={() => handleBlockchainSelect('501')} // Solana
                         type="button"
-                        className="flex items-center bg-gray-500 text-white p-2 mt-2 rounded hover:bg-gray-600"
+                        className="border px-4 py-2 bg-black text-white rounded mx-2"
                     >
-                        <FontAwesomeIcon icon={faClipboard} className="h-5 w-5" />
+                        Solana
+                    </button>
+                    <button
+                        onClick={() => handleBlockchainSelect('60')} // Ethereum
+                        type="button"
+                        className="border px-4 py-2 bg-white text-black rounded mx-2"
+                    >
+                        Ethereum
                     </button>
                 </div>
+            ) : (
+                <div>
+                    <h3 className="text-md font-semibold">
+                        Selected Blockchain: {blockchainType === '501' ? 'Solana' : 'Ethereum'}
+                    </h3>
+                    <button
+                        onClick={handleWalletGenerate}
+                        type="button"
+                        className="border px-4 py-2 bg-green-500 text-white rounded mt-4"
+                    >
+                        Generate Wallet
+                    </button>
+                </div>
+            )}
+
+            {mnemonic.length > 0 && mnemonic[0].trim() && isGenerated && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="mt-4"
+                >
+                    <div className="mt-4">
+                        <h3 className="text-lg font-bold">Your Mnemonic:</h3>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {mnemonic.map((word, index) => (
+                                <span key={index} className="bg-gray-200 px-2 py-1 rounded text-black">
+                                    {word}
+                                </span>
+                            ))}
+                        </div>
+                        <button
+                            onClick={handleCopyToClipboard}
+                            type="button"
+                            className="flex items-center bg-gray-500 text-white p-2 mt-2 rounded hover:bg-gray-600"
+                        >
+                            <FontAwesomeIcon icon={faClipboard} className="h-5 w-5" />
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+
+            {wallets.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="mt-6"
+                >
+                    <h3 className="text-lg font-bold">Generated Wallets:</h3>
+                    {wallets.map((wallet, index) => (
+                        <div key={index} className="p-4 bg-gray-100 rounded mt-4">
+                            <h4 className="text-md font-semibold">Wallet {index + 1}:</h4>
+                            <p><strong>Public Key:</strong> {wallet.publicKey}</p>
+                            <p><strong>Private Key:</strong> {wallet.privateKey}</p>
+                            <p><strong>Account Index:</strong> {index}</p>
+                        </div>
+                    ))}
                 </motion.div>
             )}
         </div>
