@@ -8,8 +8,9 @@ import { ethers } from 'ethers';
 import bs58 from "bs58";
 import toast, { Toaster } from "react-hot-toast";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClipboard } from '@fortawesome/free-solid-svg-icons';
+import { faClipboard, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { motion } from 'framer-motion';
+import { tr } from 'framer-motion/client';
 
 interface Wallet {
     publicKey: string;
@@ -23,32 +24,53 @@ const WalletGenerator = () => {
     const [isGenerated, setIsGenerated] = useState(false);
     const [blockchainType, setBlockchainType] = useState<string | null>(null);
     const [accountIndex, setAccountIndex] = useState(0);
+    const [inputMnemonic, setInputMnemonic] = useState<string>("");
 
     // Generate Mnemonic once and store it
-    const handleBlockchainSelect = (type: string) => {
-        if(!mnemonic.length){
-            const generatedMnemonic = bip39.generateMnemonic().split(' ');
-            setMnemonicWords(generatedMnemonic);
-            toast.success("Mnemonic generated successfully");
+    
+    const handleBlockchainSelect = (blockchain: string) => {
+        console.log(blockchain);
+        setBlockchainType(blockchain);
+        toast.success("Blockchain selected successfully.");
+    }
+
+    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setInputMnemonic(event.target.value);
+    }
+    
+    const generateBtnClicked = () => {
+        if(inputMnemonic.trim() === ""){
+            const newMnemonic = bip39.generateMnemonic();
+            setMnemonicWords(newMnemonic.split(" "));
+            console.log(newMnemonic);
         }
-        setBlockchainType(type);
+        else{
+            const words = inputMnemonic.split(" ");
+            if(words.length !== 12){
+                toast.error("Please enter 12 words separated by space.");
+                return;
+            }
+            setMnemonicWords(words);
+        }
+        setIsGenerated(true);
     }
 
     const handleWalletGenerate = () => {
-        if(!blockchainType || !mnemonic.length){
+        if (!blockchainType || !mnemonic.length) {
             toast.error("Please select a blockchain type and generate a mnemonic.");
             return;
         }
-
         const mnemonicString = mnemonic.join(' ');
+        
         generateWalletFromMnemonic(mnemonicString, blockchainType, accountIndex);
 
         setAccountIndex(accountIndex + 1);
         setIsGenerated(true);
     }
 
+    // Copy Mnemonic to Clipboard
     const handleCopyToClipboard = () => {
-        
+
         const mnemonicString = mnemonic.join(' ');
         navigator.clipboard.writeText(mnemonicString)
             .then(() => {
@@ -60,6 +82,7 @@ const WalletGenerator = () => {
             })
     }
 
+    // Generate Wallet from Mnemonic
     const generateWalletFromMnemonic = (
         mnemonic: string,
         pathType: string,
@@ -67,73 +90,133 @@ const WalletGenerator = () => {
     ) => {
         const seedBuffer = bip39.mnemonicToSeedSync(mnemonic);
         const path = `m/44'/${pathType}'/0'/${accountIndex}'`;
-        const {key: derivedSeed} = derivePath(path, seedBuffer.toString('hex'));
+        const { key: derivedSeed } = derivePath(path, seedBuffer.toString('hex'));
 
-        let publicKeyEncoded : string;
-        let privateKeyEncoded : string;
+        let publicKeyEncoded: string;
+        let privateKeyEncoded: string;
 
-        if(pathType == '501'){
+        if (pathType == '501') {
             // Solana Seed
             const { secretKey } = nacl.sign.keyPair.fromSeed(derivedSeed);
             const keyPair = Keypair.fromSecretKey(secretKey);
-            
+
             privateKeyEncoded = bs58.encode(secretKey);
             publicKeyEncoded = keyPair.publicKey.toBase58();
-        }else if(pathType == '60'){
+        } else if (pathType == '60') {
             // Ethereum Seed
             const privateKey = Buffer.from(derivedSeed).toString('hex');
             privateKeyEncoded = privateKey;
 
             const wallet = new ethers.Wallet(privateKey);
             publicKeyEncoded = wallet.address;
-        }else{
+        } else {
             toast.error("Error in generating Wallet.");
             return;
         }
 
-        const wallet : Wallet = {
+        const wallet: Wallet = {
             publicKey: publicKeyEncoded,
             privateKey: privateKeyEncoded,
             mnemonic
         };
-
+        toast.success("Wallet generated successfully.");
         setWallets((preWallets) => [...preWallets, wallet]);
+    }
+
+    const PrivateKeyDisplay = ({ privateKey }:  { privateKey: string }) => {
+        const [isVisible, setIsVisible] = useState(false);
+    
+        return (
+            <div>
+                <p className='cursor-pointer' onClick={() => {
+                        setIsVisible(!isVisible);
+                    }}>
+                    <strong>Private Key:</strong> {isVisible ? privateKey : '•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+                </p>
+            </div>
+        );
+    };
+    
+
+    
+    
+    const clearWallets = () => {
+        setWallets([]);
+        setMnemonicWords([]);
+        setIsGenerated(false);
+        setAccountIndex(0);
+        setBlockchainType(null);
     }
 
     return (
         <div className="p-4">
             <Toaster />
             {!blockchainType ? (
+
                 <div>
-                    <button
-                        onClick={() => handleBlockchainSelect('501')} // Solana
-                        type="button"
-                        className="border px-4 py-2 bg-black text-white rounded mx-2"
-                    >
-                        Solana
-                    </button>
-                    <button
-                        onClick={() => handleBlockchainSelect('60')} // Ethereum
-                        type="button"
-                        className="border px-4 py-2 bg-white text-black rounded mx-2"
-                    >
-                        Ethereum
-                    </button>
+                    <div className="text-5xl font-bold">
+                        Hash Wallet Mnemonic Generator
+                    </div>
+                    <div className="text-2xl font-medium mt-2">
+                        Choose a blockchain to get started.
+                    </div>
+                    <div>
+                        <button
+                            onClick={() => handleBlockchainSelect('501')} // Solana
+                            type="button"
+                            className="border px-4 py-2 bg-black text-white rounded mx-2"
+                        >
+                            Solana
+                        </button>
+                        <button
+                            onClick={() => handleBlockchainSelect('60')} // Ethereum
+                            type="button"
+                            className="border px-4 py-2 bg-white text-black rounded mx-2"
+                        >
+                            Ethereum
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div>
-                    <h3 className="text-md font-semibold">
-                        Selected Blockchain: {blockchainType === '501' ? 'Solana' : 'Ethereum'}
-                    </h3>
-                    <button
-                        onClick={handleWalletGenerate}
-                        type="button"
-                        className="border px-4 py-2 bg-green-500 text-white rounded mt-4"
-                    >
-                        Generate Wallet
-                    </button>
+                    Select a blockchain: {blockchainType === '501' ? 'Solana' : 'Ethereum'}
                 </div>
             )}
+
+            {!mnemonic.length && blockchainType != null && (
+                <div>
+                <div>
+                    <div className="text-5xl font-bold">
+                        Secret Recovery Phase
+                    </div>
+                    <div className="text-2xl font-medium mt-2">
+                        Save these words in safe place.
+                    </div>
+                </div>
+                <h3 className="text-md font-semibold">
+                    Selected Blockchain: {blockchainType === '501' ? 'Solana' : 'Ethereum'}
+                </h3>
+                <div className='mt-4 flex gap-2'>
+                    <input
+                        className='border px-4 py-2 rounded w-full'
+                        type="password"
+                        onChange={() => handleInputChange}
+                        placeholder="Enter your secret phrase ( or leave blank to generate )"
+                    />
+                    <button
+                        type='button'
+                        className='border px-4 py-2 bg-green-500 text-white rounded'
+                        onClick={generateBtnClicked}
+                    >
+                        Generate
+                    </button>
+                </div>
+            </div>
+            ) }
+
+            
+
+
 
             {mnemonic.length > 0 && mnemonic[0].trim() && isGenerated && (
                 <motion.div
@@ -158,6 +241,8 @@ const WalletGenerator = () => {
                         >
                             <FontAwesomeIcon icon={faClipboard} className="h-5 w-5" />
                         </button>
+
+                        <button className='py-2 px-4 bg-green-500 border text-white mt-2' type='button' onClick={handleWalletGenerate}>Add Wallet</button>
                     </div>
                 </motion.div>
             )}
@@ -174,7 +259,7 @@ const WalletGenerator = () => {
                         <div key={index} className="p-4 bg-gray-100 rounded mt-4">
                             <h4 className="text-md font-semibold">Wallet {index + 1}:</h4>
                             <p><strong>Public Key:</strong> {wallet.publicKey}</p>
-                            <p><strong>Private Key:</strong> {wallet.privateKey}</p>
+                            <PrivateKeyDisplay privateKey={wallet.privateKey} />
                             <p><strong>Account Index:</strong> {index}</p>
                         </div>
                     ))}
