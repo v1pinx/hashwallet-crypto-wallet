@@ -29,7 +29,7 @@ Hash Wallet is a simple web-based tool to generate and manage cryptocurrency wal
 1. Clone the repository:
    ```bash
    git clone https://github.com/v1pinx/hash-wallet-generator.git
-   cd hash-wallet-generator
+   cd hashwallet-crypto-wallet
 2.  Install the dependencies:
     
     
