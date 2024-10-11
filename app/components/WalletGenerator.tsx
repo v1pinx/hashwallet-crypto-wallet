@@ -27,7 +27,6 @@ const WalletGenerator = () => {
     const [inputMnemonic, setInputMnemonic] = useState<string>("");
 
     const handleBlockchainSelect = (blockchain: string) => {
-        console.log(blockchain);
         setBlockchainType(blockchain);
         toast.success("Blockchain selected successfully.");
     }
@@ -40,7 +39,6 @@ const WalletGenerator = () => {
         if (inputMnemonic.trim() === "") {
             const newMnemonic = bip39.generateMnemonic();
             setMnemonicWords(newMnemonic.split(" "));
-            console.log(newMnemonic);
         } else {
             const words = inputMnemonic.split(" ");
             if (words.length !== 12) {
@@ -58,7 +56,6 @@ const WalletGenerator = () => {
             return;
         }
         const mnemonicString = mnemonic.join(' ');
-
         generateWalletFromMnemonic(mnemonicString, blockchainType, accountIndex);
         setAccountIndex(accountIndex + 1);
     }
@@ -197,15 +194,14 @@ const WalletGenerator = () => {
                             ))}
                         </div>
                         <div className='flex justify-between mt-2'>
-
-                        <button
-                            onClick={handleCopyToClipboard}
-                            type="button"
-                            className="flex items-center bg-gray-500 text-white p-2 rounded hover:bg-gray-600 transition"
-                        >
-                            <FontAwesomeIcon icon={faClipboard} className="h-5 w-5" />
-                        </button>
-                        <button className='px-4 py-2 bg-violet-800 text-white rounded font-semibold hover:bg-violet-700 transition' type='button' onClick={handleWalletGenerate}>Add Wallet</button>
+                            <button
+                                onClick={handleCopyToClipboard}
+                                type="button"
+                                className="flex items-center bg-gray-500 text-white p-2 rounded hover:bg-gray-600 transition"
+                            >
+                                <FontAwesomeIcon icon={faClipboard} className="h-5 w-5" />
+                            </button>
+                            <button className='px-4 py-2 bg-violet-800 text-white rounded font-semibold hover:bg-violet-700 transition' type='button' onClick={handleWalletGenerate}>Add Wallet</button>
                         </div>
                     </motion.div>
                 </>
@@ -227,6 +223,12 @@ const WalletGenerator = () => {
                             <p><strong>Account Index:</strong> {index}</p>
                         </div>
                     ))}
+                    <button
+                        onClick={clearWallets}
+                        className="mt-4 px-4 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-500 transition"
+                    >
+                        Clear Wallets
+                    </button>
                 </motion.div>
             )}
         </div>
